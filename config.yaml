@@ -1,0 +1,49 @@
+---
+screen :
+   width : 2560
+   height : 1600
+
+camera :
+   width : 960
+   height : 1280
+   focallength : 1470
+
+distortionFileRegex : 'dist_(?P<long>-?[0-9]+),(?P<lat>-?[0-9]+)_(?P<projector>[a-z_]+).csv'
+combinedDistortionFilePattern : 'correctedDistortion_%s.csv'
+combinedDistortionFileRegex : 'correctedDistortion_(?P.*).csv'
+
+detection:
+   stepsize : 10
+   shots:
+      - angles :     [0,0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [15,0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [30,0]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [-15,0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-30,0]
+        projectors : ['upper-left', 'lower-left']
+
+projectors :
+   upper-left:
+     iOffset : 0
+     jOffset : 0
+     width : 1280
+     height : 800
+   upper-right:
+     iOffset : 1280
+     jOffset : 0
+     width : 1280
+     height : 800
+   lower-left:
+     iOffset : 0
+     jOffset : 800
+     width : 1280
+     height : 800
+   lower-right:
+     iOffset : 1280
+     jOffset : 800
+     width : 1280
+     height : 800
