@@ -36,131 +36,141 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Detector(object):
-	""" Main class for gathering data about projection distortion. """
+    """ Main class for gathering data about projection distortion. """
 
-	def __init__(self, camera, screenSize, projectorSize, projectorOffset, stepsize):
-		""" 
-			parameters
-			==========
-			camera :			an object of a class with a method takeSnapshot(), which returns an
-								cv2 image.
-			screenSize :		dimensions of the portion of the projection image to be probed -- a 
-								tuple (width,height) of ints.
-			projectorSize :		dimensions of the whole projection image -- a tuple (width,height) of
-								ints.
-			projectorOffset :	offset of the portiion of the projection image to be probed -- a tuple
-								(i,j) of ints.
-			stepsize :			size of vertical and horizontal steps between pixels to be probed.
-								(stepsize = 10 : one pixel in a 10x10 square is probed.)
+    def __init__(self, camera, screenSize, projectorSize, projectorOffset, stepsize):
+        """ 
+        parameters
+        ==========
+        camera -- an object of a class with a method takeSnapshot(), which 
+            returns an cv2 image.
+        screenSize -- dimensions of the portion of the projection image to 
+            be probed : a tuple (width,height) of ints.
+        projectorSize -- dimensions of the whole projection image : a tuple 
+            (width,height) of ints.
+        projectorOffset -- offset of the portiion of the projection image 
+            to be probed : a tuple (i,j) of ints.
+        stepsize -- size of vertical and horizontal steps between pixels 
+            to be probed. (stepsize = 10 -- one pixel in a 10x10 square is 
+            probed.)
+        """
+        self.camera = camera
+        self.projectorSize = projectorSize
+        self.projectorOffset = projectorOffset
+        self.screenSize = screenSize
+        self.stepsize = stepsize
+        self.mapping = collections.defaultdict(tuple)
+        self.imageIterator = code.CodeImageIterator(projectorSize, stepsize)
+        self.projectorImage = numpy.zeros(
+                (screenSize[1], screenSize[0]), dtype=numpy.float
+        )
 
-		"""
-		self.camera = camera
-		self.projectorSize = projectorSize
-		self.projectorOffset = projectorOffset
-		self.screenSize = screenSize
-		self.stepsize = stepsize
-		self.mapping = collections.defaultdict(tuple)
-		self.imageIterator = code.CodeImageIterator(projectorSize, stepsize)
-		self.projectorImage = numpy.zeros((screenSize[1], screenSize[0]), dtype=numpy.float)
-		self.viewport = self.projectorImage[projectorOffset[1]:projectorOffset[1]+projectorSize[1],
-										projectorOffset[0]:projectorOffset[0]+projectorSize[0]]
+        self.viewport = self.projectorImage[
+            projectorOffset[1]:projectorOffset[1]+projectorSize[1],
+            projectorOffset[0]:projectorOffset[0]+projectorSize[0]
+        ]
 
-	def takeSnapshot(self):
-		""" use the camera to take and return a snapshot """
-		image = self.camera.takeSnapshot()
-		image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-		image = numpy.rot90(image)
-		return image
+    def takeSnapshot(self):
+        """ use the camera to take and return a snapshot """
+        image = self.camera.takeSnapshot()
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        image = numpy.rot90(image)
+        return image
 
-	def handleImage(self, step, image):
-		""" use the information in the given image. """
-		image = cv2.subtract(src1=image, src2=self.baseline)
-		_,image = cv2.threshold(src=image, thresh=180, maxval=255, type=cv2.THRESH_BINARY)
+    def handleImage(self, step, image):
+        """ use the information in the given image. """
+        image = cv2.subtract(src1=image, src2=self.baseline)
+        _,image = cv2.threshold(
+            src=image, thresh=180, maxval=255, type=cv2.THRESH_BINARY
+        )
 
-		idx = numpy.nonzero(image == 255)
-		logger.debug("%d white pixels.", idx[0].shape[0])
-		assert len(set(list(zip(idx[0], idx[1])))) == len(list(zip(idx[0], idx[1])))
-		for idxy,idxx in zip(idx[0],idx[1]):
-			self.mapping[(idxx, idxy)] += (step,)
+        idx = numpy.nonzero(image == 255)
+        logger.debug("%d white pixels.", idx[0].shape[0])
+        for idxy,idxx in zip(idx[0],idx[1]):
+            self.mapping[(idxx, idxy)] += (step,)
 
-	def detect(self):
-		"""
-			project images, take and process pictures to get projector pixel to camera
-			pixel mappings.
-		"""
-		windowtitle = "Projection Detection"
-		cv.NamedWindow(windowtitle,cv.CV_WINDOW_NORMAL)
-		cv.ResizeWindow(windowtitle,self.screenSize[0],self.screenSize[1])
-		cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)
-		cv2.imshow(windowtitle, self.projectorImage)
-		cv2.waitKey(50)
-		self.baseline = self.takeSnapshot()
-		for step,im in enumerate(self.imageIterator.generator()):
-			self.viewport[:] = im
-			cv2.imshow(windowtitle, self.projectorImage)
-			cv2.waitKey(30)
-			image = self.takeSnapshot()
-			self.handleImage(step, image)
-		self.postProcess()
-	
-	def postProcess(self):
-		"""
-			use the information gathered to infer projector pixel to camera pixel 
-			mappings.
-		"""
-		tempMapping = collections.defaultdict(list)
-		discarded = 0
-		for x,y in self.mapping:
-			pixel = self.imageIterator.lookupPixel(self.mapping[x,y])
-			if pixel:
-				i,j = pixel
-				if i < self.projectorSize[0] and j < self.projectorSize[1]:
-					logger.debug("Valid Pixel within range: %s", (pixel))
-					i = pixel[0] + self.projectorOffset[0]
-					j = pixel[1] + self.projectorOffset[1]
-					tempMapping[i, j].append((x,y))
-				else:
-					logger.debug("Invalid Pixel out of range: %s", (pixel))
-					discarded += 1
-			else:
-				discarded += 1
+    def detect(self):
+        """
+        project images, take and process pictures to get projector pixel to 
+        camera pixel mappings.
+        """
+        windowtitle = "Projection Detection"
+        cv.NamedWindow(windowtitle,cv.CV_WINDOW_NORMAL)
+        cv.ResizeWindow(windowtitle,self.screenSize[0],self.screenSize[1])
+        cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)
+        cv2.imshow(windowtitle, self.projectorImage)
+        cv2.waitKey(50)
+        self.baseline = self.takeSnapshot()
+        for step,im in enumerate(self.imageIterator.generator()):
+            self.viewport[:] = im
+            cv2.imshow(windowtitle, self.projectorImage)
+            cv2.waitKey(30)
+            image = self.takeSnapshot()
+            self.handleImage(step, image)
+        self.postProcess()
+    
+    def postProcess(self):
+        """
+        use the information gathered to infer projector pixel to camera pixel 
+        mappings.
+        """
+        tempMapping = collections.defaultdict(list)
+        discarded = 0
+        for x,y in self.mapping:
+            pixel = self.imageIterator.lookupPixel(self.mapping[x,y])
+            if pixel:
+                i,j = pixel
+                if i < self.projectorSize[0] and j < self.projectorSize[1]:
+                    logger.debug("Valid Pixel within range: %s", (pixel))
+                    i = pixel[0] + self.projectorOffset[0]
+                    j = pixel[1] + self.projectorOffset[1]
+                    tempMapping[i, j].append((x,y))
+                else:
+                    logger.debug("Invalid Pixel out of range: %s", (pixel))
+                    discarded += 1
+            else:
+                discarded += 1
 
-		self.remapping = {}
-		for pixel in tempMapping:
-			pixx = numpy.median([i for i,j in tempMapping[pixel]])
-			pixy = numpy.median([j for i,j in tempMapping[pixel]])
-			self.remapping[pixx,pixy] = pixel
-		logger.debug('Found mappings for %d pixels. Discarded %d.', len(self.remapping), discarded)
+        self.remapping = {}
+        for pixel in tempMapping:
+            pixx = numpy.median([i for i,j in tempMapping[pixel]])
+            pixy = numpy.median([j for i,j in tempMapping[pixel]])
+            self.remapping[pixx,pixy] = pixel
+
+        logger.debug(
+            'Found mappings for %d pixels. Discarded %d.',
+            len(self.remapping), discarded
+        )
 
 if __name__ == "__main__":
-	logging.basicConfig(level=logging.DEBUG)
-	
-	import yaml
-	config = yaml.load(open('config.yaml'))
-	stepsize = config['detection']['stepsize']
-	screenSize = config['screen']['width'],config['screen']['height']
-	cameraSize = config['camera']['width'], config['camera']['height']
+    logging.basicConfig(level=logging.DEBUG)
+    
+    import yaml
+    config = yaml.load(open('config.yaml'))
+    stepsize = config['detection']['stepsize']
+    screenSize = config['screen']['width'],config['screen']['height']
+    cameraSize = config['camera']['width'], config['camera']['height']
 
-	cam = webCamGrabber.webCamGrabber(devnum=-1, size=cameraSize)
+    cam = webCamGrabber.webCamGrabber(devnum=-1, size=cameraSize)
 
-	data = []
-	for shot in config['detection']['shots']:
-		cam.rotateTo(shot['angles'])
-		for projector in shot['projectors']:
-			projectorConfig = config['projectors'][projector]
-			projectorSize = projectorConfig['width'],projectorConfig['height']
-			projectorOffset = projectorConfig['iOffset'],projectorConfig['jOffset']
-			detector = Detector(camera=cam, 
-								screenSize=screenSize, 
-								projectorSize=projectorSize, 
-								projectorOffset=projectorOffset, 
-								stepsize=stepsize)
-			detector.detect()
+    data = []
+    for shot in config['detection']['shots']:
+        cam.rotateTo(shot['angles'])
+        for projector in shot['projectors']:
+            projectorConfig = config['projectors'][projector]
+            projectorSize = projectorConfig['width'],projectorConfig['height']
+            projectorOffset = projectorConfig['iOffset'],projectorConfig['jOffset']
+            detector = Detector(camera=cam, 
+                                screenSize=screenSize, 
+                                projectorSize=projectorSize, 
+                                projectorOffset=projectorOffset, 
+                                stepsize=stepsize)
+            detector.detect()
 
-			for x,y in detector.remapping:
-				i,j = detector.remapping[x,y]
-				data.append((x,y,i,j) + tuple(shot['angles']))
+            for x,y in detector.remapping:
+                i,j = detector.remapping[x,y]
+                data.append((x,y,i,j) + tuple(shot['angles']))
 
-	outfilename = 'distortion.npy'
-	logger.info("Done.  Writing data to %s.", outfilename)
-	numpy.save(outfilename, data)
+    outfilename = 'distortion.npy'
+    logger.info("Done.  Writing data to %s.", outfilename)
+    numpy.save(outfilename, data)
