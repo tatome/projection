@@ -30,22 +30,22 @@ logger = logging.getLogger(__name__)
 
 class Conversion(object):
     """ 
-	Implements conversion of camera image coordinates to viewing angles.
+    Implements conversion of camera image coordinates to viewing angles.
     """
     def __init__(self, imageSize, yaw, vergence, roll, focallength):
         """
-		imageSize -- size of the camera image.
-		yaw -- rotation of the camera around the y axis..
-		vergence -- rotation of the camera around the (rotated) x axis.
-		roll -- rotation of the camera around the (rotated) z axis.
+        imageSize -- size of the camera image.
+        yaw -- rotation of the camera around the y axis..
+        vergence -- rotation of the camera around the (rotated) x axis.
+        roll -- rotation of the camera around the (rotated) z axis.
         """
         norm = numpy.array([[1,0,0],
                             [0,1,0],
                             [0,0,1]], dtype=numpy.float64)
         logger.debug(
-			"Conversion with yaw %f, vergence %f, roll %f, focal length %f", 
-			yaw, vergence, roll, focallength
-		)
+            "Conversion with yaw %f, vergence %f, roll %f, focal length %f", 
+            yaw, vergence, roll, focallength
+        )
 
         self.x = self.rotate(norm[0], norm[1], yaw)
         self.y = self.rotate(norm[1], self.x, -vergence)
@@ -58,15 +58,15 @@ class Conversion(object):
     
     def rotate(self, v, k, theta):
         '''
-		Returns k rotated around v by angle theta (in radians)
+        Returns k rotated around v by angle theta (in radians)
         '''
         cth = math.cos(theta)
         return v * cth + numpy.cross(k,v) * math.sin(theta)
 
     def convert(self, point):
         """
-		point -- (2 x n) array of horizontal and vertical image coordinates.
-		returns viewing angles of the image coordinates.
+        point -- (2 x n) array of horizontal and vertical image coordinates.
+        returns viewing angles of the image coordinates.
         """
         x,y = point
         x = x - self.imageSize[0]/2
