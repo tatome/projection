@@ -29,7 +29,7 @@ import numpy
 import cv2
 import cv
 
-import webCamGrabber
+import instarCamera
 import code
 
 import logging
@@ -73,18 +73,15 @@ class Detector(object):
     def takeSnapshot(self):
         """ use the camera to take and return a snapshot """
         image = self.camera.takeSnapshot()
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        image = numpy.rot90(image)
+        image = numpy.average(image, axis=2)
         return image
 
     def handleImage(self, step, image):
         """ use the information in the given image. """
-        image = cv2.subtract(src1=image, src2=self.baseline)
-        _,image = cv2.threshold(
-            src=image, thresh=180, maxval=255, type=cv2.THRESH_BINARY
-        )
+        image = (image - self.dark_baseline) / self.bright_baseline
 
-        idx = numpy.nonzero(image == 255)
+        image = image > 0.4
+        idx = numpy.nonzero(image)
         logger.debug("%d white pixels.", idx[0].shape[0])
         for idxy,idxx in zip(idx[0],idx[1]):
             self.mapping[(idxx, idxy)] += (step,)
@@ -100,11 +97,17 @@ class Detector(object):
         cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)
         cv2.imshow(windowtitle, self.projectorImage)
         cv2.waitKey(50)
-        self.baseline = self.takeSnapshot()
+        self.dark_baseline = self.takeSnapshot()
+        # show all pixels, take picture.
+        self.viewport[:] = self.imageIterator.allPixels()
+        cv2.imshow(windowtitle, self.projectorImage)
+        cv2.waitKey(50)
+        self.bright_baseline = self.takeSnapshot() - self.dark_baseline
+        self.bright_baseline = numpy.maximum(self.bright_baseline, 40)
         for step,im in enumerate(self.imageIterator.generator()):
             self.viewport[:] = im
             cv2.imshow(windowtitle, self.projectorImage)
-            cv2.waitKey(30)
+            cv2.waitKey(500)
             image = self.takeSnapshot()
             self.handleImage(step, image)
         self.postProcess()
@@ -150,8 +153,14 @@ if __name__ == "__main__":
     stepsize = config['detection']['stepsize']
     screenSize = config['screen']['width'],config['screen']['height']
     cameraSize = config['camera']['width'], config['camera']['height']
+    cam = instarCamera.instarCamera()
 
-    cam = webCamGrabber.webCamGrabber(devnum=-1, size=cameraSize)
+    blank_image = numpy.zeros((screenSize[1], screenSize[0]), dtype=numpy.float)
+    cv.NamedWindow(windowtitle,cv.CV_WINDOW_NORMAL)
+    cv.ResizeWindow(windowtitle,screenSize[0],screenSize[1])
+    cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)
+    cv2.imshow(windowtitle, blank_image)
+    cv2.waitKey(50)
 
     data = []
     for shot in config['detection']['shots']:
