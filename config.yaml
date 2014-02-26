@@ -12,6 +12,12 @@ distortionFileRegex : 'dist_(?P<long>-?[0-9]+),(?P<lat>-?[0-9]+)_(?P<projector>[
 combinedDistortionFilePattern : 'correctedDistortion_%s.csv'
 combinedDistortionFileRegex : 'correctedDistortion_(?P.*).csv'
 
+regression:
+   blobspread : 0.1
+   blobsteps : 5
+   sigma : 4
+   iterations : 2
+
 detection:
    stepsize : 10
    shots:
