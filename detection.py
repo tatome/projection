@@ -35,6 +35,8 @@ import code
 import logging
 logger = logging.getLogger(__name__)
 
+windowtitle = "Projection Detection"
+
 class Detector(object):
     """ Main class for gathering data about projection distortion. """
 
@@ -91,7 +93,6 @@ class Detector(object):
         project images, take and process pictures to get projector pixel to 
         camera pixel mappings.
         """
-        windowtitle = "Projection Detection"
         cv.NamedWindow(windowtitle,cv.CV_WINDOW_NORMAL)
         cv.ResizeWindow(windowtitle,self.screenSize[0],self.screenSize[1])
         cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)

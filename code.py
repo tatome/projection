@@ -115,6 +115,11 @@ class CodeImageIterator(object):
 						for y in range(self.imageSize[1])])
 			)
     
+    def allPixels(self):
+        i,j = numpy.mgrid[0:self.imageSize[1],0:self.imageSize[0]]
+        return (i % self.stepsize == 0) & (j % self.stepsize == 0)
+        #return numpy.fromfunction(lambda i,j: ((i % self.stepsize == 0) * (j % self.stepsize == 0)), (self.imageSize[1],self.imageSize[0]))
+
     def lookupPixel(self, word):
         """
         word : tuple of indices of ones in a word.   
