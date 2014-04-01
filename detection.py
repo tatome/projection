@@ -62,12 +62,13 @@ class Detector(object):
         self.screenSize = screenSize
         self.stepsize = stepsize
         self.mapping = collections.defaultdict(tuple)
+        self.remapping = {}
         self.imageIterator = code.CodeImageIterator(projectorSize, stepsize)
-        self.projectorImage = numpy.zeros(
+        self.projector_image = numpy.zeros(
                 (screenSize[1], screenSize[0]), dtype=numpy.float
         )
 
-        self.viewport = self.projectorImage[
+        self.viewport = self.projector_image[
             projectorOffset[1]:projectorOffset[1]+projectorSize[1],
             projectorOffset[0]:projectorOffset[0]+projectorSize[0]
         ]
@@ -82,7 +83,8 @@ class Detector(object):
         """ use the information in the given image. """
         image = (image - self.dark_baseline) / self.bright_baseline
 
-        image = image > 0.4
+        image = (image > 0.1) & (self.mask)
+        cv2.imwrite('/tmp/pixels.png', image * 255.)
         idx = numpy.nonzero(image)
         logger.debug("%d white pixels.", idx[0].shape[0])
         for idxy,idxx in zip(idx[0],idx[1]):
@@ -96,22 +98,34 @@ class Detector(object):
         cv.NamedWindow(windowtitle,cv.CV_WINDOW_NORMAL)
         cv.ResizeWindow(windowtitle,self.screenSize[0],self.screenSize[1])
         cv.SetWindowProperty(windowtitle, 0, cv.CV_WINDOW_FULLSCREEN)
-        cv2.imshow(windowtitle, self.projectorImage)
-        cv2.waitKey(50)
+        cv2.imshow(windowtitle, self.projector_image)
+        cv2.waitKey(500)
         self.dark_baseline = self.takeSnapshot()
-        # show all pixels, take picture.
-        self.viewport[:] = self.imageIterator.allPixels()
-        cv2.imshow(windowtitle, self.projectorImage)
-        cv2.waitKey(50)
-        self.bright_baseline = self.takeSnapshot() - self.dark_baseline
-        self.bright_baseline = numpy.maximum(self.bright_baseline, 40)
-        for step,im in enumerate(self.imageIterator.generator()):
-            self.viewport[:] = im
-            cv2.imshow(windowtitle, self.projectorImage)
-            cv2.waitKey(500)
-            image = self.takeSnapshot()
-            self.handleImage(step, image)
-        self.postProcess()
+
+        # light up only everything that's within the current projector's
+        # part of the projected image.
+        self.projector_image[:] = 0
+        self.viewport[:] = .3
+        cv2.imshow(windowtitle, self.projector_image)
+        cv2.waitKey(500)
+        allpixels = self.takeSnapshot()
+        self.bright_baseline = allpixels - self.dark_baseline
+        cv2.imwrite('/tmp/allpixels.png', allpixels)
+        self.mask = self.bright_baseline > 30
+        cv2.imwrite('/tmp/mask.png', self.mask * 250.)
+        
+        self.projector_image[:] = 0
+
+        if self.mask.any():
+            for step,im in enumerate(self.imageIterator.generator()):
+                self.viewport[:] = im
+                cv2.imshow(windowtitle, self.projector_image)
+                cv2.waitKey(500)
+                image = self.takeSnapshot()
+                self.handleImage(step, image)
+            self.postProcess()
+        else:
+            logger.info("No visible pixels. Skipping detection for this camera pose and projector.")
     
     def postProcess(self):
         """
@@ -135,7 +149,6 @@ class Detector(object):
             else:
                 discarded += 1
 
-        self.remapping = {}
         for pixel in tempMapping:
             pixx = numpy.median([i for i,j in tempMapping[pixel]])
             pixy = numpy.median([j for i,j in tempMapping[pixel]])
@@ -149,8 +162,13 @@ class Detector(object):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', dest = 'config', default = 'config.yaml')
+    args = parser.parse_args()
+
     import yaml
-    config = yaml.load(open('config.yaml'))
+    config = yaml.load(open(args.config))
     stepsize = config['detection']['stepsize']
     screenSize = config['screen']['width'],config['screen']['height']
     cameraSize = config['camera']['width'], config['camera']['height']
@@ -181,6 +199,6 @@ if __name__ == "__main__":
                 i,j = detector.remapping[x,y]
                 data.append((x,y,i,j) + tuple(shot['angles']))
 
-    outfilename = 'distortion.npy'
+    outfilename = 'distortion.npz'
     logger.info("Done.  Writing data to %s.", outfilename)
-    numpy.save(outfilename, data)
+    numpy.savez(outfilename, data=data, config=yaml.dump(config))
