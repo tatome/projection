@@ -3,34 +3,38 @@ screen :
    width : 2560
    height : 1600
 
+### WEBCAM ###
+#camera :
+#   width : 960
+#   height : 1280
+#   focallength : 1470
+### INSTAR ###
 camera :
-   width : 960
-   height : 1280
-   focallength : 1470
+   width : 1280
+   height : 720
+   focallength : 1929
 
 distortionFileRegex : 'dist_(?P<long>-?[0-9]+),(?P<lat>-?[0-9]+)_(?P<projector>[a-z_]+).csv'
-combinedDistortionFilePattern : 'correctedDistortion_%s.csv'
-combinedDistortionFileRegex : 'correctedDistortion_(?P.*).csv'
+combinedDistortionFilePattern : 'correctedDistortion-%s.csv'
+combinedDistortionFileRegex : 'correctedDistortion-(?P.*).csv'
 
 regression:
+#   blobspread : 0.1
    blobspread : 0.1
+#   blobsteps : 25
    blobsteps : 5
-   sigma : 4
+#   sigma : 3
+   sigma : 3
    iterations : 2
 
-detection:
-   stepsize : 10
-   shots:
-      - angles :     [0,0]
-        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
-      - angles :     [15,0]
-        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
-      - angles :     [30,0]
-        projectors : ['upper-right', 'lower-right']
-      - angles :     [-15,0]
-        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
-      - angles :     [-30,0]
-        projectors : ['upper-left', 'lower-left']
+lens_regression :
+   blobspread : 0.1
+   blobsteps : 10
+   sigma : 6
+
+opengl_setup :
+   aperture : 120
+   focallength : 70
 
 projectors :
    upper-left:
@@ -53,3 +57,96 @@ projectors :
      jOffset : 800
      width : 1280
      height : 800
+
+detection:
+   stepsize : 10
+   shots:
+      - angles :     [0.0,0.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-7.4,0.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right'] 
+      - angles :     [-18.5,0.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-37.0,0.0]
+        projectors : ['upper-left', 'lower-left','lower-left', 'lower-right']
+      - angles :     [-55.5,0.0]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [-74.0,0.0]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [7.4,0.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [18.5,0.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [37.0,0.0]
+        projectors : ['upper-right', 'lower-right','lower-left', 'lower-right']
+      - angles :     [55.5,0.0]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [74.0,0.0]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [0.0,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-7.4,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-18.5,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-37.0,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-55.5,12.5]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [-74.0,12.5]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [7.4,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [18.5,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [37.0,12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [55.5,12.5]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [74.0,12.5]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [0.0,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-7.4,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-18.5,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-37.0,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-55.5,-12.5]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [-74.0,-12.5]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [7.4,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [18.5,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [37.0,-12.5]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [55.5,-12.5]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [74.0,-12.5]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [0.0,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-7.4,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-18.5,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-37.0,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [-55.5,20.0]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [-74.0,20.0]
+        projectors : ['upper-left', 'lower-left']
+      - angles :     [7.4,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [18.5,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [37.0,20.0]
+        projectors : ['upper-left', 'upper-right', 'lower-left', 'lower-right']
+      - angles :     [55.5,20.0]
+        projectors : ['upper-right', 'lower-right']
+      - angles :     [74.0,20.0]
+        projectors : ['upper-right', 'lower-right']
+      

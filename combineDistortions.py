@@ -214,4 +214,4 @@ if __name__ == '__main__':
     converter = Converter(config)
 
     infile = numpy.load(args.infile)
-    converter.convert(infile)
+    converter.convert(infile['data'])

@@ -42,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser("Generates a lookup table for distortion correction.")
 parser.add_argument('-i', dest='infilename', type=str, required=True)
-parser.add_argument('-o', dest='outfilename', type=str, required=True)
 parser.add_argument('-n', dest='numpyOutfilename', type=str, required=True)
 args = parser.parse_args()
 
@@ -229,6 +228,6 @@ logger.debug("Extremal values: %f, %f", ytable.min(), ytable.max())
 # Save our hard work's fruit.
 if args.numpyOutfilename:
     with open(args.numpyOutfilename, 'wb') as outfile:
-        numpy.save(outfile, numpy.dstack((xtable,ytable)))
+        numpy.savez(outfile, offsets = (iOffset,jOffset), tables = numpy.dstack((xtable,ytable)))
 
 logger.info("Done.")
