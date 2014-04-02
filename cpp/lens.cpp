@@ -1,3 +1,28 @@
+// ####################################################################
+//  Copyright (C) 2013-2014 by Johannes Bauer, The University of 
+//  Hamburg
+//  http://www.tatome.de
+//  This file is part of the projection correction project.
+//
+//  Adapted, with permission, from Paul Bourke's lens correction code:
+//  http://paulbourke.net/miscellaneous/lenscorrection/
+//
+//  This is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU General Public License as 
+//  published by the Free Software Foundation; either  version 2 
+//  of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public  License 
+//  along with this file; if not, write to the
+//  Free Software Foundation, Inc.,
+//  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+// ####################################################################
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,20 +37,7 @@
 #include "config.h"
 #include "experiment.h"
 
-// OSC connectivity
-#define OSCPKT_OSTREAM_OUTPUT
-#include "oscpkt/oscpkt.hh"
-#include "oscpkt/udp.hh"
-
-using std::cout;
-using std::cerr;
-
-using namespace oscpkt;
-
-const int PORT_NUM = 9109;
-
 /* Flags */
-int currentbutton = -1;
 CAMERA camera;
 XYZ origin = {0.0,0.0,0.0};
 XYZ focus = {0,0,1};
@@ -36,30 +48,23 @@ GLuint edgeBlending;
 float angle = 0;
 
 void *readerThread(void*);
-pthread_mutex_t angleChangeMutex = PTHREAD_MUTEX_INITIALIZER;
 bool drawn = false;
 
 std::list<Projector> projectors;
 
 int main(int argc, char **argv)
 {
-	int i;
-
-	std::string *projectordata;
-
 	pthread_t thread1;
 	
-	pthread_create(&thread1, NULL, readerThread, NULL);
-
 	/* Parse the command line arguments */
+	std::string *projectordata;
 	Projector *projector;
-	for (i=1;i<argc;i++) {
+	for (int i=1; i < argc; i++) {
 		if (strstr(argv[i],"-p") != NULL) {
 			projectordata = new std::string(argv[i+1]);
 			projector = new Projector(*projectordata);
 			projectors.push_back(*(projector));
 		}
-		fprintf(stderr, "After if.\n");
 	}
 	fprintf(stderr, "Done initializing projectors.\n");
 
@@ -76,7 +81,6 @@ int main(int argc, char **argv)
 	glutDisplayFunc(HandleDisplay);
 	glutVisibilityFunc(HandleVisibility);
 	glutKeyboardFunc(HandleKeyboard);
-	glutMotionFunc(HandleMouseMotion);
 	glutSetCursor(GLUT_CURSOR_NONE);
 	CreateEnvironment();
 
@@ -100,53 +104,6 @@ int main(int argc, char **argv)
 	} else {
 		fprintf(stderr, "Could not initialize experiment code.");
 		return(-1);
-	}
-}
-
-void *readerThread(void*) {
-	int rc;
-	UdpSocket sock;
-	sock.bindTo(PORT_NUM);
-	if (!sock.isOk()) {
-		cerr << "Error opening port " << PORT_NUM << ": " << sock.errorMessage() << "\n";
-	} else {
-		cout << "Server started, will listen to packets on port " << PORT_NUM << std::endl;
-		PacketReader pr;
-		PacketWriter pw;
-		while (sock.isOk()) {
-			if (sock.receiveNextPacket(30 /* timeout, in ms */)) {
-				pr.init(sock.packetData(), sock.packetSize());
-				oscpkt::Message *msg;
-				while (pr.isOk() && (msg = pr.popMessage()) != 0) {
-					int angle;
-					if (msg->match("/show").popInt32(angle).isOkNoMoreArgs()) {
-						cout << "Server: received /show " << angle << " from " << sock.packetOrigin() << std::endl;
-
-						cout << "angle: " << angle << std::endl;
-
-						rc = pthread_mutex_lock(&angleChangeMutex);
-
-						/* Determine the focal point */
-						focus.x = sin(angle * PI / 180.f);
-						focus.y = 0;
-						focus.z = cos(angle * PI / 180.f);
-
-						rotated();
-						pthread_mutex_unlock(&angleChangeMutex);
-
-						cout << " x: " << focus.x << ", z: " << focus.z << std::endl;
-
-						drawn = false;
-						while(!drawn) {
-							pthread_yield();
-						}
-											
-					} else {
-						cout << "Server: unhandled message: " << *msg << "\n";
-					}
-				}
-			}
-		}
 	}
 }
 
@@ -199,15 +156,13 @@ void HandleDisplay(void)
 				focus.x,focus.y,focus.z,
 				 0,1,0);
 
-	// Can't have anyone changing the data while we're drawing.
-	rc = pthread_mutex_lock(&angleChangeMutex);
+	/* Create Scene */
 	MakeExperiment();
-	pthread_mutex_unlock(&angleChangeMutex);
-
 
 	MakeLighting();
 
 	/* Copy the image to be used as a texture */
+	/* Deep Magic */
 	maxdim = camera.screenwidth >= camera.screenheight ? camera.screenwidth : camera.screenheight;
 	if ((thetex = (PIXELA*) malloc(camera.screenwidth*camera.screenheight*sizeof(PIXELA))) == NULL) {
 		fprintf(stderr,"Failed to allocate memory for the texture\n");
@@ -221,7 +176,6 @@ void HandleDisplay(void)
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); 
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D,0,4,
-		//camera.screenwidth,camera.screenheight,
 		camera.screenwidth,camera.screenheight,
 		0,GL_RGBA,GL_UNSIGNED_BYTE,thetex);
 	glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
@@ -243,8 +197,14 @@ void HandleDisplay(void)
 	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D,textureid);
+
+	/* Now distort the image. */
 	CreateGrid();
+
+	/* Apply edge blending */
 	EdgeBlend();
+
+	/* Clean up, swap buffers. */
 	glDisable(GL_TEXTURE_2D);
 	glutSwapBuffers();
 	glDeleteTextures(1,&textureid);
@@ -339,30 +299,11 @@ void reshape(int w,int h)
 }
 
 /*
-	Handle mouse motion
-*/
-void HandleMouseMotion(int x,int y)
-{
-	static int xlast=-1,ylast=-1;
-	int dx,dy;
-
-	dx = x - xlast;
-	dy = y - ylast;
-	if (dx < 0)		dx = -1;
-	else if (dx > 0) dx =  1;
-	if (dy < 0)		dy = -1;
-	else if (dy > 0) dy =  1;
-
-	xlast = x;
-	ylast = y;
-}
-
-/*
 	Form the grid with distorted texture coordinates
 */
 void CreateGrid(void)
 {
-	// define corners of quad.
+	/* define corners of quad. */
 	static const int idisps[] = {0,1,1,0};
 	static const int jdisps[] = {0,0,1,1};
 	static const int n = 5;
@@ -380,7 +321,7 @@ void CreateGrid(void)
 
 		for (i = (*projector).getIOffset();i + n < ((*projector).getIOffset() + (*projector).getWidth()); i+=n) {
 			for (j=(*projector).getJOffset();j + n < ((*projector).getJOffset() + (*projector).getHeight()); j+=n) {
-				// iterate over corners of quad.
+				/* iterate over corners of quad. */
 				for(disp = 0; disp < 4; disp++) {
 					idisp = i + n * idisps[disp];
 					jdisp = j + n * jdisps[disp];
@@ -396,42 +337,24 @@ void CreateGrid(void)
 }
 
 void EdgeBlend() {
-	/* Apply edge blending texture. */
-	glEnable(GL_BLEND);
-	glBindTexture(GL_TEXTURE_2D,edgeBlending);
-	glBlendFunc(GL_DST_COLOR, GL_ZERO);
-	glBegin(GL_QUADS);
-		glTexCoord2f(0,0);
-		glVertex3f(-screenSize[0]/2,-screenSize[1]/2,0.0);
+	if(edgeBlending) {
+		/* Apply edge blending texture. */
+		glEnable(GL_BLEND);
+		glBindTexture(GL_TEXTURE_2D,edgeBlending);
+		glBlendFunc(GL_DST_COLOR, GL_ZERO);
+		glBegin(GL_QUADS);
+			glTexCoord2f(0,0);
+			glVertex3f(-screenSize[0]/2,-screenSize[1]/2,0.0);
 
-		glTexCoord2f(1,0);
-		glVertex3f(screenSize[0]/2,-screenSize[1]/2,0.0);
+			glTexCoord2f(1,0);
+			glVertex3f(screenSize[0]/2,-screenSize[1]/2,0.0);
 
-		glTexCoord2f(1,1);
-		glVertex3f(screenSize[0]/2,screenSize[1]/2,0.0);
+			glTexCoord2f(1,1);
+			glVertex3f(screenSize[0]/2,screenSize[1]/2,0.0);
 
-		glTexCoord2f(0,1);
-		glVertex3f(-screenSize[0]/2,screenSize[1]/2,0.0);
-	glEnd();
-}
-
-
-/*-------------------------------------------------------------------------
-	Normalise a vector
-*/
-void Normalise(XYZ *p)
-{
-	double length;
-
-	length = sqrt(p->x * p->x + p->y * p->y + p->z * p->z);
-	if (length != 0) {
-		p->x /= length;
-		p->y /= length;
-		p->z /= length;
-	} else {
-		p->x = 0;
-		p->y = 0;
-		p->z = 0;
+			glTexCoord2f(0,1);
+			glVertex3f(-screenSize[0]/2,screenSize[1]/2,0.0);
+		glEnd();
 	}
 }
 
