@@ -42,9 +42,9 @@ class Code(object):
     def encode(self, n):
         if n > len(self.code):
             raise (
-				ValueError,
-				"This code has only %d elements.  Requested: %d." % (len(self.code), n)
-			)
+                ValueError,
+                "This code has only %d elements.  Requested: %d." % (len(self.code), n)
+            )
         return self.code[n]
 
     def lookup(self, c):
@@ -52,7 +52,7 @@ class Code(object):
         c -- a tuple of indices.
 
         return the number in whose binary code exactly the indices in c are
-		ones.
+        ones.
         """
         c = tuple(sorted(c))
         if c in self.lookupMap:
@@ -80,7 +80,7 @@ class CodeImageIterator(object):
         """
         size -- size of the image -- tuple (width,height) of ints.
         stepsize -- only one in every stepsize pixels horizontally and 
-			vertically flickers its code.
+            vertically flickers its code.
         """
         self.stepsize = stepsize
         self.imageSize = size
@@ -110,10 +110,10 @@ class CodeImageIterator(object):
                 else:
                     return 0.
             yield (
-				numpy.array([[brightP(x,y) 
-					for x in range(self.imageSize[0])] 
-						for y in range(self.imageSize[1])])
-			)
+                numpy.array([[brightP(x,y) 
+                    for x in range(self.imageSize[0])] 
+                        for y in range(self.imageSize[1])])
+            )
     
     def allPixels(self):
         i,j = numpy.mgrid[0:self.imageSize[1],0:self.imageSize[0]]
@@ -123,7 +123,7 @@ class CodeImageIterator(object):
         """
         word : tuple of indices of ones in a word.   
         return the horizontal and vertical index of the pixel with the given 
-		code.
+        code.
         """
         number = self.code.lookup(word)
         if number is not None:
