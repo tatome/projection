@@ -32,7 +32,6 @@ import yaml
 import csv
 import itertools
 import collections
-from regressor import *
 
 from multiprocessing import Pool
 
