@@ -69,8 +69,8 @@ class Conversion(object):
         returns viewing angles of the image coordinates.
         """
         x,y = point
-        x = x - self.imageSize[0]/2
-        y = y - self.imageSize[1]/2
+        x -= self.imageSize[0]/2
+        y -= self.imageSize[1]/2
 
         def extend(a):
             return numpy.tile(a,(3,1)).transpose()

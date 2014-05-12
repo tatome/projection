@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <list>
+#include <vector>
 #include <math.h>
 #include <GL/glut.h>
 #include <SOIL.h>
@@ -48,9 +48,8 @@ GLuint edgeBlending;
 float angle = 0;
 
 void *readerThread(void*);
-bool drawn = false;
 
-std::list<Projector> projectors;
+std::vector<Projector*> projectors;
 
 int main(int argc, char **argv)
 {
@@ -63,14 +62,14 @@ int main(int argc, char **argv)
 		if (strstr(argv[i],"-p") != NULL) {
 			projectordata = new std::string(argv[i+1]);
 			projector = new Projector(*projectordata);
-			projectors.push_back(*(projector));
+			projectors.push_back(projector);
 		}
 	}
 	fprintf(stderr, "Done initializing projectors.\n");
 
 	/* Set things up and go */
 	glutInit(&argc,argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
 	glutCreateWindow("Pre-Distorted Scene");
 	camera.aperture = aperture;
@@ -209,8 +208,6 @@ void HandleDisplay(void)
 	glutSwapBuffers();
 	glDeleteTextures(1,&textureid);
 	free(thetex);
-
-	drawn = true;
 }
 
 /*
@@ -317,16 +314,16 @@ void CreateGrid(void)
 	glBegin(GL_QUADS);
 		
 
-	for (std::list<Projector>::iterator projector = projectors.begin(); projector != projectors.end(); ++projector) {
+	for (std::vector<Projector*>::iterator projector = projectors.begin(); projector != projectors.end(); ++projector) {
 
-		for (i = (*projector).getIOffset();i + n < ((*projector).getIOffset() + (*projector).getWidth()); i+=n) {
-			for (j=(*projector).getJOffset();j + n < ((*projector).getJOffset() + (*projector).getHeight()); j+=n) {
+		for (i = (*projector)->getIOffset();i + n < ((*projector)->getIOffset() + (*projector)->getWidth()); i+=n) {
+			for (j=(*projector)->getJOffset();j + n < ((*projector)->getJOffset() + (*projector)->getHeight()); j+=n) {
 				/* iterate over corners of quad. */
 				for(disp = 0; disp < 4; disp++) {
 					idisp = i + n * idisps[disp];
 					jdisp = j + n * jdisps[disp];
 
-					(*projector).transform(idisp,jdisp,x,y);
+					(*projector)->transform(idisp,jdisp,x,y);
 					glTexCoord2f(x,y);
 					glVertex3f(idisp - screenSize[0]/2.0,screenSize[1]/2.0 - jdisp,0.0);
 				}

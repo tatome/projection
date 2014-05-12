@@ -92,16 +92,15 @@ class Converter(object):
         # rotate along the chip's horizontal axis.
         roll = 0.0
 
-        dataset = {} # perspective -> list of mappings
+        dataset = {} # camera poses -> lists of mappings
 
         neutralConversion = conversion.Conversion(
             imageSize, 0, 0, roll, self.focallength
         )
 
-        # sort offsets such that we start near the center and move our way
-        # outward.  A more sophisticated algorithm could be thought of, but
-        # this works in practice (as long as there is sufficient overlap
-        # between shots.
+        # sort offsets such that we start near the center and move outward.
+        # A more sophisticated algorithm could be thought of, but this works 
+        # in practice (as long as there is sufficient overlap between shots.
         allOffsets = set(tuple(d[4:6]) for d in data)
         allOffsets = sorted(allOffsets, key=lambda p: (p[0]**2+p[1]**2))
         for offsets in allOffsets:
